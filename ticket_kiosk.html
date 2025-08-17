@@ -1,0 +1,452 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>こどもチケット券売機</title>
+<meta name="theme-color" content="#111827">
+<style>
+  :root{
+    --bg:#0b1220;
+    --panel:#111827;
+    --ink:#e5e7eb;
+    --muted:#9ca3af;
+    --accent:#22c55e;
+    --accent-2:#3b82f6;
+    --card:#0f172a;
+  }
+  html,body{height:100%;}
+  body { margin:0; font-family: "Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",system-ui,-apple-system,sans-serif;
+    color:var(--ink); background: radial-gradient(1400px 800px at 10% -10%, #112248, transparent 60%), var(--bg); }
+  .wrap{ max-width:1024px; margin:0 auto; padding: 18px 14px 120px;}
+
+  header{ display:flex; align-items:center; gap:12px; margin:4px 0 8px;}
+  .logo{ width:64px; height:64px; border-radius:16px; display:grid; place-items:center; font-size:34px;
+    background:linear-gradient(135deg,#34d399,#22c55e); box-shadow:0 10px 24px rgba(0,0,0,.25);}
+  h1{ font-size: clamp(20px, 4vw, 28px); margin:0;}
+  .sub{ color:var(--muted); font-size:13px}
+  .gear{ margin-left:auto; opacity:.7; user-select:none; cursor:pointer; }
+  .gear button{ background:#1f2937; border:1px solid #374151; color:#e5e7eb; border-radius:12px; padding:10px 12px; font-size:14px;}
+  .hint{font-size:12px; color:#9ca3af}
+
+  .kiosk{ display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:12px; margin-top:8px;}
+  .card{ background:linear-gradient(180deg,#0b1731,#0a1426); border:1px solid #1f2b46; border-radius:20px; padding:14px; box-shadow: inset 0 1px 0 rgba(255,255,255,.06);}
+  .section-title{ font-weight:800; margin:6px 0 10px; font-size:18px; }
+  .movie-list{ display:grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap:10px;}
+  .movie{ display:flex; gap:10px; align-items:center; padding:10px; border-radius:14px; border:1px solid #1e293b; background:#0b1220; cursor:pointer; }
+  .movie:active{ transform: scale(.98);}
+  .movie .poster{ width:56px; height:56px; font-size:30px; display:grid; place-items:center; border-radius:12px; border:2px dashed #38bdf8; background:#031222;}
+  .movie .title{ font-weight:800; }
+  .movie .sub{ color:#9ca3af; font-size:12px; }
+  .selected{ outline:3px solid #3b82f6; }
+
+  .btns{ display:flex; flex-wrap:wrap; gap:10px; }
+  .btn{ font-size:22px; padding:14px 16px; border-radius:14px; border:2px solid #1f2b46; background:#0b1220; color:#e5e7eb; cursor:pointer; min-width:110px;}
+  .btn.selected{ border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.2) inset;}
+
+  .qty-row{ display:flex; align-items:center; gap:12px; flex-wrap:wrap;}
+  .pill{ background:#0b1220; border:2px solid #1f2b46; border-radius:16px; display:flex; align-items:center; gap:8px; padding:8px;}
+  .pill button{ width:56px; height:56px; border-radius:12px; border:2px solid #203050; background:#0a1326; color:#e5e7eb; font-size:28px; }
+  .pill input{ width:90px; font-size:30px; text-align:center; color:#fff; background:transparent; border:none; outline:none; }
+  .price{ margin-left:auto; font-size:26px; font-weight:900; }
+
+  .actions{ display:flex; gap:12px; flex-wrap:wrap; margin-top:12px;}
+  .primary{ background:#22c55e; color:#052e16; border:none; border-radius:16px; padding:16px 18px; font-size:22px; font-weight:900; cursor:pointer; }
+  .secondary{ background:#0b1220; color:#22c55e; border:2px solid #22c55e; border-radius:14px; padding:12px 16px; font-size:18px; cursor:pointer; }
+  .note{ color:#8da2c0; font-size:12px; }
+
+  /* Ticket preview bar */
+  .ticket-area{ position:sticky; bottom:0; left:0; right:0; background:#020617; border-top:1px solid #1f2937; padding:10px; }
+  .ticket-wrap{ display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+  .ticket-preview{ background:#fff; color:#000; border-radius:16px; display:flex; gap:14px; align-items:center; padding:12px 14px; }
+  .stub{ border-right:2px dashed #e5e7eb; padding-right:12px; margin-right:12px; }
+  .ticket-title{ font-weight:900; font-size:18px; }
+  .ticket-meta{ font-size:12px; color:#374151; }
+  .qr{ width:96px; height:96px; background:#f1f5f9; border-radius:8px; display:grid; place-items:center; }
+
+  .hidden{ display:none !important; }
+
+  /* admin panel */
+  .admin{ position: fixed; inset:0; background: rgba(2,6,23,.75); display:none; align-items:center; justify-content:center; padding:16px; }
+  .admin .panel{ width:min(980px, 96vw); background:#0a1326; border:1px solid #1f2b46; border-radius:22px; padding:16px; }
+  .admin h2{ margin:0 0 10px; }
+  .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .input, textarea, select{ background:#0b1220; border:1px solid #1f2b46; color:#e5e7eb; border-radius:10px; padding:10px; font-size:16px; }
+  textarea{ width:100%; min-height:80px; }
+  .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+  .mini-card{ background:#0b1220; border:1px solid #1f2b46; border-radius:14px; padding:10px; }
+  label{ font-size:12px; color:#9ca3af; display:block; margin-bottom:6px;}
+  .admin-actions{ display:flex; gap:10px; justify-content:flex-end; margin-top:10px; }
+  .danger{ background:#ef4444; color:#fff; border:none; border-radius:12px; padding:10px 12px; }
+  .ok{ background:#22c55e; color:#052e16; border:none; border-radius:12px; padding:12px 16px; font-weight:900; }
+
+  /* printing */
+  @media print{
+    body{ background:#fff; color:#000;}
+    header,.card:not(.printable),.ticket-area,.admin{ display:none !important; }
+    .ticket-sheet{ display:block; }
+  }
+  .ticket-sheet{ display:none; padding:20px; }
+  .ticket-grid{ display:grid; grid-template-columns: repeat(auto-fit,minmax(280px,1fr)); gap:12px;}
+  .mini{ background:#fff; border:2px dashed #e5e7eb; border-radius:16px; padding:12px; display:flex; gap:12px; align-items:center; }
+  .mini .qr{ width:72px; height:72px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">🎟️</div>
+      <div>
+        <h1>こどもチケット券売機</h1>
+        <div class="sub">先生が設定 → こどもがタッチで発券（学習・ごっこ遊び用）</div>
+      </div>
+      <div class="gear"><button id="gear">⚙️ 設定</button><div class="hint">長押しで開く / PIN保護</div></div>
+    </header>
+
+    <div class="kiosk">
+      <div class="card">
+        <div class="section-title">① えいが をえらぼう</div>
+        <div class="movie-list" id="movie-list"></div>
+      </div>
+      <div class="card">
+        <div class="section-title">② じかん をえらぼう</div>
+        <div class="btns" id="time-list"></div>
+      </div>
+      <div class="card">
+        <div class="section-title">③ まいすう をえらぼう</div>
+        <div class="qty-row">
+          <div class="pill" aria-label="子ども枚数">
+            <button type="button" data-q="kid" data-delta="-1">－</button>
+            <input id="qty-kid" type="number" min="0" max="10" value="1" inputmode="numeric" />
+            <button type="button" data-q="kid" data-delta="1">＋</button>
+          </div>
+          <span>子ども</span>
+          <div class="pill" aria-label="おとな枚数" id="adult-wrap">
+            <button type="button" data-q="adult" data-delta="-1">－</button>
+            <input id="qty-adult" type="number" min="0" max="10" value="0" inputmode="numeric" />
+            <button type="button" data-q="adult" data-delta="1">＋</button>
+          </div>
+          <span id="adult-label">おとな</span>
+          <div class="price" id="price">合計 0円</div>
+        </div>
+        <div class="actions">
+          <button class="primary" id="issue">🎫 発券する</button>
+          <button class="secondary" id="reset">リセット</button>
+        </div>
+        <div class="note">※ このアプリは学習用です。お金はかかりません。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ticket-area" id="ticket-area">
+    <div class="ticket-wrap">
+      <div class="ticket-preview" id="ticket-preview">
+        <div class="stub">
+          <div class="ticket-title" id="pv-title">タイトル</div>
+          <div class="ticket-meta" id="pv-meta">--:-- / A-1 / 枚数: 1</div>
+          <div class="ticket-meta" id="pv-code">CODE: -----</div>
+        </div>
+        <canvas class="qr" id="pv-qr" width="96" height="96"></canvas>
+      </div>
+      <div class="actions">
+        <button class="primary" id="print">🖨️ チケットを印刷</button>
+        <button class="secondary" id="hide-preview">プレビューをしまう</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ticket-sheet" id="ticket-sheet">
+    <div class="section-title" style="color:#111">🎫 発券チケット（切り取り線にそって切ってね）</div>
+    <div class="ticket-grid" id="ticket-grid"></div>
+  </div>
+
+  <!-- Admin Modal -->
+  <div class="admin" id="admin">
+    <div class="panel">
+      <h2>⚙️ 設定（先生用）</h2>
+      <div class="grid2">
+        <div class="mini-card">
+          <label>上映作品（最大6）※1行が1作品：「絵文字 半角スペース タイトル｜サブタイトル」</label>
+          <textarea id="admin-movies" class="input" placeholder="例：🐉 ドラゴンサマー｜わくわく大冒険！
+🐱 ねこのミュージカル｜うたって おどって にゃん！
+🐬 うみのヒーロー｜みんなで地球をまもる"></textarea>
+          <div class="hint">絵文字とタイトルの間は空白、サブタイトルは「｜」で区切ります</div>
+        </div>
+        <div class="mini-card">
+          <label>上映時間（カンマ区切り）</label>
+          <input id="admin-times" class="input" placeholder="10:00, 13:00, 15:30, 18:00" />
+          <div class="row">
+            <div>
+              <label>料金：子ども（円）</label>
+              <input id="admin-price-kid" type="number" class="input" value="500">
+            </div>
+            <div>
+              <label>料金：おとな（円）</label>
+              <input id="admin-price-adult" type="number" class="input" value="800">
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>おとな券を表示</label>
+              <select id="admin-show-adult" class="input">
+                <option value="1">表示する</option>
+                <option value="0">隠す</option>
+              </select>
+            </div>
+            <div>
+              <label>PIN（設定画面ロック）</label>
+              <input id="admin-pin" class="input" placeholder="0000" value="0000">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="admin-actions">
+        <button class="danger" id="admin-clear">設定を全部リセット</button>
+        <button class="ok" id="admin-save">保存して閉じる</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ===== 保存・設定 =====
+const STORAGE_KEY = "kids_ticket_settings_v1";
+const DEFAULTS = {
+  prices: { kid: 500, adult: 800 },
+  times: ["10:00","13:00","15:30","18:00"],
+  movies: [
+    {emoji:"🐉", title:"ドラゴンサマー", sub:"わくわく大冒険！"},
+    {emoji:"🐱", title:"ねこのミュージカル", sub:"うたって おどって にゃん！"},
+    {emoji:"🐬", title:"うみのヒーロー", sub:"みんなで地球をまもる"}
+  ],
+  showAdult: true,
+  pin: "0000"
+};
+function saveSettings(s){ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
+function loadSettings(){
+  let s = localStorage.getItem(STORAGE_KEY);
+  if(!s) return {...DEFAULTS};
+  try{ return {...DEFAULTS, ...JSON.parse(s)} }catch(e){ return {...DEFAULTS}; }
+}
+
+let SETTINGS = loadSettings();
+
+// ===== 状態 =====
+const state = {
+  movie: null,
+  time: null,
+  qty: { kid: 1, adult: 0 },
+  seat: null,
+  code: null
+};
+
+// ===== ユーティリティ =====
+function yen(n){ return n.toLocaleString("ja-JP") + "円"; }
+function calcTotal(){ return state.qty.kid*SETTINGS.prices.kid + state.qty.adult*SETTINGS.prices.adult; }
+function rnd(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function genSeat(){
+  const rows = "ABCDEFGH".split(""); const row = rnd(rows);
+  const num = Math.floor(Math.random()*12)+1; return `${row}-${num}`;
+}
+function genCode(){
+  const base = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let s="";
+  for(let i=0;i<8;i++) s += base[Math.floor(Math.random()*base.length)];
+  return s;
+}
+function drawFauxQR(canvas, seedStr){
+  const ctx = canvas.getContext("2d"); const size=canvas.width;
+  ctx.clearRect(0,0,size,size); ctx.fillStyle="#fff"; ctx.fillRect(0,0,size,size);
+  ctx.strokeStyle="#111"; ctx.lineWidth=2; ctx.strokeRect(1,1,size-2,size-2);
+  const n=6; const cell=Math.floor(size/n);
+  let seed = 0; for(let i=0;i<seedStr.length;i++) seed=(seed*31+seedStr.charCodeAt(i))>>>0;
+  function rand(){ seed=(seed*1664525+1013904223)>>>0; return seed/0xffffffff; }
+  ctx.fillStyle="#111";
+  for(let y=0;y<n;y++){ for(let x=0;x<n;x++){ if(rand()>0.5) ctx.fillRect(x*cell+2,y*cell+2,cell-4,cell-4); } }
+}
+
+// ===== レンダリング =====
+function renderMovies(){
+  const box = document.getElementById("movie-list"); box.innerHTML="";
+  SETTINGS.movies.slice(0,6).forEach((m,idx)=>{
+    const el = document.createElement("div");
+    el.className = "movie";
+    el.innerHTML = `<div class="poster">${m.emoji||"🎬"}</div>
+      <div><div class="title">${m.title||("タイトル"+(idx+1))}</div>
+      <div class="sub">${m.sub||""}</div></div>`;
+    el.addEventListener("click", ()=>{
+      state.movie = m;
+      [...box.children].forEach(x=>x.classList.remove("selected"));
+      el.classList.add("selected");
+      refreshPreview();
+    });
+    box.appendChild(el);
+  });
+}
+function renderTimes(){
+  const box = document.getElementById("time-list"); box.innerHTML="";
+  SETTINGS.times.forEach(t=>{
+    const b = document.createElement("button");
+    b.className = "btn"; b.textContent = t;
+    b.addEventListener("click", ()=>{
+      state.time = t;
+      [...box.children].forEach(x=>x.classList.remove("selected"));
+      b.classList.add("selected");
+      refreshPreview();
+    });
+    box.appendChild(b);
+  });
+  // 大人券の表示/非表示
+  document.getElementById("adult-wrap").style.display = SETTINGS.showAdult ? "flex" : "none";
+  document.getElementById("adult-label").style.display = SETTINGS.showAdult ? "inline" : "none";
+}
+function updatePrice(){ document.getElementById("price").textContent = "合計 " + yen(calcTotal()); }
+function refreshPreview(){
+  const pvTitle = document.getElementById("pv-title");
+  const pvMeta = document.getElementById("pv-meta");
+  const pvCode = document.getElementById("pv-code");
+  const seat = state.seat || "—";
+  const totalQty = state.qty.kid + state.qty.adult;
+  pvTitle.textContent = state.movie ? state.movie.title : "タイトル";
+  pvMeta.textContent = `${state.time || "--:--"} / ${seat} / 枚数: ${totalQty}`;
+  pvCode.textContent = "CODE: " + (state.code || "-----");
+  drawFauxQR(document.getElementById("pv-qr"), (state.code || "-----")+String(totalQty));
+}
+function buildTicketNode(entry){
+  const wrap = document.createElement("div");
+  wrap.className = "mini";
+  wrap.innerHTML = `
+    <div class="stub">
+      <div class="ticket-title">${entry.movie.title}</div>
+      <div class="ticket-meta">${entry.time} / ${entry.seat} / 種別: ${entry.kind==="kid"?"こども":"おとな"}</div>
+      <div class="ticket-meta">CODE: ${entry.code}</div>
+    </div>
+    <canvas class="qr" width="72" height="72"></canvas>
+  `;
+  drawFauxQR(wrap.querySelector("canvas"), entry.code+entry.kind+entry.time);
+  return wrap;
+}
+
+// ===== 動作 =====
+function issueTickets(){
+  if(!state.movie){ alert("えいがをえらんでね"); return; }
+  if(!state.time){ alert("じかんをえらんでね"); return; }
+  const totalQty = state.qty.kid + state.qty.adult;
+  if(totalQty<=0){ alert("まいすうをえらんでね"); return; }
+  state.seat = genSeat();
+  state.code = genCode();
+  refreshPreview();
+  document.getElementById("ticket-area").classList.remove("hidden");
+  // 印刷用
+  const grid = document.getElementById("ticket-grid"); grid.innerHTML="";
+  const entries = [];
+  for(let i=0;i<state.qty.kid;i++) entries.push({kind:"kid"});
+  for(let i=0;i<state.qty.adult;i++) entries.push({kind:"adult"});
+  entries.forEach((e,idx)=>{
+    e.movie=state.movie; e.time=state.time; e.seat=state.seat; e.code=state.code+"-"+(idx+1);
+    grid.appendChild(buildTicketNode(e));
+  });
+  document.getElementById("ticket-sheet").style.display="block";
+  window.scrollTo({top: document.body.scrollHeight, behavior:"smooth"});
+}
+
+function resetAll(){
+  state.movie=null; state.time=null; state.qty={kid:1, adult:0}; state.seat=null; state.code=null;
+  document.getElementById("qty-kid").value=1; document.getElementById("qty-adult").value=0;
+  renderMovies(); renderTimes(); updatePrice(); refreshPreview();
+  document.getElementById("ticket-area").classList.add("hidden");
+}
+
+// 数量操作
+function onQtyClick(e){
+  const btn = e.target.closest("button[data-q]"); if(!btn) return;
+  const q = btn.dataset.q; const delta = Number(btn.dataset.delta);
+  const input = document.getElementById(q==="kid"?"qty-kid":"qty-adult");
+  let v = Number(input.value||0) + delta; v = Math.max(0, Math.min(10, v));
+  input.value = v; state.qty[q]=v; updatePrice(); refreshPreview();
+}
+function onQtyInput(e){
+  const id=e.target.id; const q=id==="qty-kid"?"kid":"adult";
+  let v = Number(e.target.value||0); v=Math.max(0,Math.min(10,v));
+  state.qty[q]=v; e.target.value=v; updatePrice(); refreshPreview();
+}
+
+// ===== Admin UI =====
+function openAdmin(){
+  const pin = prompt("PINを入力（初期値 0000）");
+  if(pin===null) return;
+  if(pin !== SETTINGS.pin){ alert("PINがちがいます"); return; }
+  const modal = document.getElementById("admin");
+  modal.style.display="flex";
+  // 反映
+  const area = document.getElementById("admin-movies");
+  area.value = SETTINGS.movies.map(m=>`${m.emoji||"🎬"} ${m.title||""}${m.sub?("｜"+m.sub):""}`).join("\n");
+  document.getElementById("admin-times").value = SETTINGS.times.join(", ");
+  document.getElementById("admin-price-kid").value = SETTINGS.prices.kid;
+  document.getElementById("admin-price-adult").value = SETTINGS.prices.adult;
+  document.getElementById("admin-show-adult").value = SETTINGS.showAdult ? "1":"0";
+  document.getElementById("admin-pin").value = SETTINGS.pin;
+}
+function closeAdmin(){ document.getElementById("admin").style.display="none"; }
+
+function parseMovies(text){
+  const lines = text.split(/\n+/).map(s=>s.trim()).filter(Boolean).slice(0,6);
+  return lines.map(line=>{
+    const m = /^(\S+)\s+(.+?)(?:\｜(.+))?$/.exec(line); // emoji, title, sub(optional)
+    if(!m) return {emoji:"🎬", title: line, sub:""};
+    return {emoji: m[1], title: m[2], sub: m[3]||""};
+  });
+}
+
+// 長押しで設定
+(function setupGearLongPress(){
+  const gear = document.getElementById("gear");
+  let timer=null;
+  gear.addEventListener("touchstart", start);
+  gear.addEventListener("mousedown", start);
+  gear.addEventListener("touchend", cancel);
+  gear.addEventListener("mouseup", cancel);
+  gear.addEventListener("mouseleave", cancel);
+  function start(){ timer=setTimeout(()=>{ openAdmin(); }, 700); }
+  function cancel(){ if(timer){ clearTimeout(timer); timer=null; } }
+})();
+
+// admin events
+document.getElementById("admin-save").addEventListener("click", ()=>{
+  const movies = parseMovies(document.getElementById("admin-movies").value);
+  const times = document.getElementById("admin-times").value.split(",").map(s=>s.trim()).filter(Boolean);
+  const kid = Number(document.getElementById("admin-price-kid").value||0);
+  const adult = Number(document.getElementById("admin-price-adult").value||0);
+  const showAdult = document.getElementById("admin-show-adult").value==="1";
+  const pin = document.getElementById("admin-pin").value.trim() || "0000";
+  SETTINGS = { movies, times, prices:{kid, adult}, showAdult, pin };
+  saveSettings(SETTINGS);
+  closeAdmin();
+  // 反映
+  resetAll();
+});
+document.getElementById("admin-clear").addEventListener("click", ()=>{
+  if(!confirm("保存された設定を初期化しますか？")) return;
+  localStorage.removeItem(STORAGE_KEY);
+  SETTINGS = {...DEFAULTS};
+  closeAdmin();
+  resetAll();
+});
+document.getElementById("admin").addEventListener("click", (e)=>{
+  if(e.target.id==="admin") closeAdmin();
+});
+
+// ===== init =====
+function init(){
+  renderMovies(); renderTimes(); updatePrice(); refreshPreview();
+  document.addEventListener("click", onQtyClick);
+  document.getElementById("qty-kid").addEventListener("input", onQtyInput);
+  document.getElementById("qty-adult").addEventListener("input", onQtyInput);
+  document.getElementById("issue").addEventListener("click", issueTickets);
+  document.getElementById("reset").addEventListener("click", resetAll);
+  document.getElementById("print").addEventListener("click", ()=>window.print());
+  document.getElementById("hide-preview").addEventListener("click", ()=>document.getElementById("ticket-area").classList.add("hidden"));
+}
+init();
+</script>
+</body>
+</html>
